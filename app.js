@@ -6,12 +6,18 @@ var config = {
     messagingSenderId: "616769855233"
   };
 var colors = ["#F44336", "#8BC34A", "#2196F3", "#FFC107"];
+var images = ["images/red.png",
+             "images/green.png",
+             "images/blue.png",
+             "images/yellow.png"];
 var database;
 var players = [];
 var minLat, maxLat, minLong, maxLong;
 var markers = [];
 var mapPaths = [];
-var map;
+var globalMap;
+var localMaps = [];
+var temp_info = [];
 var selectedGame;
 
 function Player(name) {
@@ -22,7 +28,13 @@ Player.prototype.setMarker = function(marker) {
 };
 Player.prototype.setColor = function(color) {
     this.color = color;
-}
+};
+Player.prototype.setGame = function(game) {
+    this.game = game;
+};
+Player.prototype.setMapPath = function(mp) {
+    this.mapPath = mp;
+};
 
 (function() {
     window.addEventListener("load", function(e) {
@@ -81,7 +93,6 @@ function expand_games(e) {
                 break;
             }
         }
-        load_game(selectedGame);
     }
     else {
         e.target.getElementsByClassName("game-button")[0].innerHTML = "+"; e.target.parentElement.style.backgroundColor="transparent";
@@ -89,192 +100,364 @@ function expand_games(e) {
         e.target.parentElement.style.color="rgb(65,64,66)";
         selectedGame = -1;
     }
+    load_game(selectedGame);
+}
+
+function expand_games_by_index(index) {
+    console.log("index: "+index);
+    Array.prototype.forEach.call(document.getElementsByClassName("game")[index].getElementsByClassName("game-member"), function(member) {
+        if(document.getElementsByClassName("game")[index].getElementsByClassName("game-button")[0].innerHTML == "+") {
+            member.style.display="block";
+        }
+    }); Array.prototype.forEach.call(document.getElementsByClassName("game")[index].getElementsByClassName("progress-bar"), function(member) {
+        if(document.getElementsByClassName("game")[index].getElementsByClassName("game-button")[0].innerHTML == "+") {
+            member.style.display="block";
+        }
+    });
+    if(document.getElementsByClassName("game")[index].getElementsByClassName("game-button")[0].innerHTML == "+") {
+        document.getElementsByClassName("game")[index].getElementsByClassName("game-button")[0].innerHTML = "-";
+        document.getElementsByClassName("game")[index].style.backgroundColor="rgb(65,64,66)";
+        document.getElementsByClassName("game")[index].style.maxHeight="250px";
+        document.getElementsByClassName("game")[index].style.color="rgb(230,230,210)";
+        if(selectedGame != -1) {
+            var oldGame = document.getElementsByClassName("game")[selectedGame];
+            Array.prototype.forEach.call(oldGame.getElementsByClassName("game-member"), function(member) {
+                member.style.display="none";
+            }); Array.prototype.forEach.call(oldGame.getElementsByClassName("progress-bar"), function(member) {
+                member.style.display="none";
+            });
+            oldGame.getElementsByClassName("game-button")[0].innerHTML = "+"; oldGame.style.backgroundColor="transparent";
+            oldGame.style.color="rgb(65,64,66)";
+            oldGame.style.maxHeight="30px";
+        }
+        selectedGame = index;
+    }
+    load_game(selectedGame);
 }
 
 function initMap() {
-    map = new google.maps.Map(document.getElementById('map'), {
+    var mapStyle= [
+      {
+        "stylers": [
+          {
+            "saturation": -25
+          },
+          {
+            "visibility": "simplified"
+          },
+          {
+            "weight": 1
+          }
+        ]
+      },
+      {
+        "elementType": "geometry",
+        "stylers": [
+          {
+            "saturation": -25
+          }
+        ]
+      },
+      {
+        "featureType": "administrative",
+        "stylers": [
+          {
+            "visibility": "simplified"
+          }
+        ]
+      },
+      {
+        "featureType": "administrative",
+        "elementType": "geometry",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "administrative.land_parcel",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "administrative.neighborhood",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "poi",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "poi",
+        "elementType": "labels.text",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "road",
+        "stylers": [
+          {
+            "visibility": "on"
+          }
+        ]
+      },
+      {
+        "featureType": "road",
+        "elementType": "labels",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "road",
+        "elementType": "labels.icon",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "road.arterial",
+        "elementType": "labels",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "road.highway",
+        "stylers": [
+          {
+            "visibility": "on"
+          }
+        ]
+      },
+      {
+        "featureType": "road.highway",
+        "elementType": "geometry.fill",
+        "stylers": [
+          {
+            "visibility": "on"
+          },
+          {
+            "weight": 3
+          }
+        ]
+      },
+      {
+        "featureType": "road.highway",
+        "elementType": "geometry.stroke",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "road.highway",
+        "elementType": "labels",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "road.local",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "transit",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "water",
+        "elementType": "labels.text",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      }
+    ];
+    globalMap = new google.maps.Map(document.getElementById('map'), {
         center: {lat: 0, lng: 0},
         zoom: 1,
         panControl: false,
         mapTypeControl: false,
         zoomControl: false,
         streetViewControl: false,
-        styles: [
-          {
-            "stylers": [
-              {
-                "saturation": -25
-              },
-              {
-                "visibility": "simplified"
-              },
-              {
-                "weight": 1
-              }
-            ]
-          },
-          {
-            "elementType": "geometry",
-            "stylers": [
-              {
-                "saturation": -25
-              }
-            ]
-          },
-          {
-            "featureType": "administrative",
-            "stylers": [
-              {
-                "visibility": "simplified"
-              }
-            ]
-          },
-          {
-            "featureType": "administrative",
-            "elementType": "geometry",
-            "stylers": [
-              {
-                "visibility": "off"
-              }
-            ]
-          },
-          {
-            "featureType": "administrative.land_parcel",
-            "stylers": [
-              {
-                "visibility": "off"
-              }
-            ]
-          },
-          {
-            "featureType": "administrative.neighborhood",
-            "stylers": [
-              {
-                "visibility": "off"
-              }
-            ]
-          },
-          {
-            "featureType": "poi",
-            "stylers": [
-              {
-                "visibility": "off"
-              }
-            ]
-          },
-          {
-            "featureType": "poi",
-            "elementType": "labels.text",
-            "stylers": [
-              {
-                "visibility": "off"
-              }
-            ]
-          },
-          {
-            "featureType": "road",
-            "stylers": [
-              {
-                "visibility": "on"
-              }
-            ]
-          },
-          {
-            "featureType": "road",
-            "elementType": "labels",
-            "stylers": [
-              {
-                "visibility": "off"
-              }
-            ]
-          },
-          {
-            "featureType": "road",
-            "elementType": "labels.icon",
-            "stylers": [
-              {
-                "visibility": "off"
-              }
-            ]
-          },
-          {
-            "featureType": "road.arterial",
-            "elementType": "labels",
-            "stylers": [
-              {
-                "visibility": "off"
-              }
-            ]
-          },
-          {
-            "featureType": "road.highway",
-            "stylers": [
-              {
-                "visibility": "on"
-              }
-            ]
-          },
-          {
-            "featureType": "road.highway",
-            "elementType": "geometry.fill",
-            "stylers": [
-              {
-                "visibility": "on"
-              },
-              {
-                "weight": 3
-              }
-            ]
-          },
-          {
-            "featureType": "road.highway",
-            "elementType": "geometry.stroke",
-            "stylers": [
-              {
-                "visibility": "off"
-              }
-            ]
-          },
-          {
-            "featureType": "road.highway",
-            "elementType": "labels",
-            "stylers": [
-              {
-                "visibility": "off"
-              }
-            ]
-          },
-          {
-            "featureType": "road.local",
-            "stylers": [
-              {
-                "visibility": "off"
-              }
-            ]
-          },
-          {
-            "featureType": "transit",
-            "stylers": [
-              {
-                "visibility": "off"
-              }
-            ]
-          },
-          {
-            "featureType": "water",
-            "elementType": "labels.text",
-            "stylers": [
-              {
-                "visibility": "off"
-              }
-            ]
-          }
-        ]
+        styles: mapStyle
     });
+    for(i=0; i<4; i++) {
+        localMaps[i] = new google.maps.Map(document.getElementById('localMap'+i), {
+            center: {lat: 0, lng: 0},
+            zoom: 1,
+            panControl: false,
+            mapTypeControl: false,
+            zoomControl: false,
+            streetViewControl: false,
+            styles: mapStyle
+        });
+    }
 }
 
 function load_game(index) {
-    
+    var gm = document.getElementById("map");
+    var lm = new Array(4);
+    lm[0] = document.getElementById("localMap0");
+    lm[1] = document.getElementById("localMap1");
+    lm[2] = document.getElementById("localMap2");
+    lm[3] = document.getElementById("localMap3");
+    lm[0].style.display="none";
+    lm[1].style.display="none";
+    lm[2].style.display="none";
+    lm[3].style.display="none";
+    if(index == -1) {
+        gm.style.display="block";
+        google.maps.event.trigger(globalMap,'resize');
+    }
+    else {
+        firebase.database().ref('/').once('value').then(function(snapshot)
+        {
+            var res = snapshot.val();
+            gm.style.display="none";
+            var mapPlayers = [];
+            var numPlayers = 0;
+            for(var pl in players) {
+                if(players.hasOwnProperty(pl)) {
+                    if(players[pl].game == index) {
+                        lm[numPlayers].style.display = "inline-block";
+                        numPlayers ++;
+                    }
+                }
+            }
+            if(numPlayers == 2) {
+                lm[0].style.width = "66.67vw";
+                lm[1].style.top="50%";
+                lm[1].style.left = "33.33vw";
+                lm[1].style.width = "66.67vw";
+            } else if(numPlayers == 3) {
+                lm[0].style.width = "33.33vw";
+                lm[1].style.left = "66.67vw";
+                lm[1].style.top = "0";
+                lm[1].style.width = "33.33vw";
+                lm[2].style.top = "50%";
+                lm[2].style.width = "66.67vw";
+            } else {
+                lm[0].style.width = "33.33vw";
+                lm[1].style.top = "0";
+                lm[1].style.left = "66.67vw";
+                lm[1].style.width = "33.33vw";
+                lm[2].style.top = "50%";
+                lm[2].style.width = "33.33vw";
+                lm[3].style.top = "50%";
+                lm[3].style.left = "66.67vw";
+                lm[3].style.width = "33.33vw";
+            }
+            numPlayers = 0;
+            for(var pl in players) {
+                if(players.hasOwnProperty(pl)) {
+                    if(players[pl].game == index) {
+                        console.log(index + " " + players[pl].name);
+                        mapPlayers.push({pl: players[pl]});
+                        var path = [];
+                        var minLat = undefined,
+                            minLong = undefined,
+                            maxLat = undefined,
+                            maxLong = undefined;
+                        for(var game in res.games) {
+                            if(res.games.hasOwnProperty(game)) {
+                                for(var pos in res.games[game].positions) {
+                                    if(res.games[game].positions.hasOwnProperty(pos)) {
+                                        var p = res.games[game].positions[pos];
+                                        if(p.player_id == pl) {
+                                            for(var coords in p.position_history) {
+                                                if(p.position_history.hasOwnProperty(coords)) {
+                                                    path.push({lat: p.position_history[coords].latitude, lng: p.position_history[coords].longitude});
+                                                    if(minLat == undefined) {
+                                                        minLat = p.position_history[coords].latitude;
+                                                        maxLat = p.position_history[coords].latitude;
+                                                        minLong = p.position_history[coords].longitude;
+                                                        maxLong = p.position_history[coords].longitude;
+                                                        continue;
+                                                    }
+                                                    console.log(p.position_history[coords].latitude+" "+p.position_history[coords].longitude);
+                                                    if(minLat > p.position_history[coords].latitude)
+                                                        minLat = p.position_history[coords].latitude;
+                                                    if(maxLat < p.position_history[coords].latitude)
+                                                        maxLat = p.position_history[coords].latitude;
+                                                    if(minLong > p.position_history[coords].longitude)
+                                                        minLong = p.position_history[coords].longitude;
+                                                    if(maxLong < p.position_history[coords].longitude)
+                                                        maxLong = p.position_history[coords].longitude;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        console.log("bounds: "+minLat+","+minLong+" "+maxLat+","+maxLong);
+                        var bounds = new google.maps.LatLngBounds();
+                        bounds.extend(new google.maps.LatLng(minLat, minLong));
+                        bounds.extend(new google.maps.LatLng(maxLat, maxLong));
+                        localMaps[numPlayers].fitBounds(bounds);
+                        google.maps.event.trigger(localMaps[numPlayers], 'resize');
+                        localMaps[numPlayers].setCenter(new google.maps.LatLng((minLat+maxLat)/2, (minLong+maxLong)/2));
+                        players[pl].setMapPath(new google.maps.Polyline({
+                            path: path,
+                            geodesic: true,
+                            strokeColor: colors[players[pl].color],
+                            strokeOpacity: 1.0,
+                            strokeWeight: 5
+                        }).setMap(localMaps[numPlayers]));
+                        var mark = new google.maps.Marker({
+                            position: new google.maps.LatLng(path[path.length-1].lat, path[path.length-1].lng),
+                            draggable: false,
+                            map: localMaps[numPlayers],
+                            icon: images[players[pl].color]
+                        });
+                        players[pl].setMarker(mark);
+                        
+                        numPlayers ++;
+                    }
+                }
+            }
+        });
+        google.maps.event.trigger(globalMap,'resize');
+        google.maps.event.trigger(localMaps[0],'resize');
+        google.maps.event.trigger(localMaps[1],'resize');
+        google.maps.event.trigger(localMaps[2],'resize');
+        google.maps.event.trigger(localMaps[3],'resize');
+    }
 }
 
 function fill_games() {
@@ -283,10 +466,13 @@ function fill_games() {
         var res = snapshot.val();
         for (var key in res.players) {
             if (res.players.hasOwnProperty(key)) {
+                //REMOVE THIS
+                if(res.players[key].name == "john" || res.players[key].name == "test") continue;
                 players[res.players[key].id]=new Player(res.players[key].name);
             }
         }
         console.log(players);
+        var gameCount = 0;
         for(var game in res.lobby) {
             if(res.lobby.hasOwnProperty(game)) {
                 var newGame = document.createElement("div");
@@ -315,6 +501,8 @@ function fill_games() {
                 newMember.className = "game-member";
                 newMember.innerHTML = players[res.lobby[game].host_id].name;
                 newMember.style.color=colors[0];
+                players[res.lobby[game].host_id].setColor(0);
+                players[res.lobby[game].host_id].setGame(gameCount);
                 newGame.appendChild(newMember);
                 var progressbar = document.createElement("div");
                 progressbar.className="progress-bar";
@@ -324,25 +512,31 @@ function fill_games() {
                 progressbar.appendChild(progress);
                 newGame.appendChild(progressbar);
                 var child = 1;
-                res.lobby[game].players.forEach(function(player) {
-                    var newMember = document.createElement("span");
-                    newMember.className = "game-member";
-                    newMember.innerHTML = players[player.player_id].name;
-                    newMember.style.color=colors[child];
-                    newGame.appendChild(newMember);
-                    var progressbar = document.createElement("div");
-                    progressbar.className="progress-bar";
-                    var progress = document.createElement("div");
-                    progress.className="progress";
-                    progress.style.background=colors[child];
-                    progressbar.appendChild(progress);
-                    newGame.appendChild(progressbar);
-                    child++;
-                });
+                for(var player in res.lobby[game].players) {
+                    if(res.lobby[game].players.hasOwnProperty(player)) {
+                        var newMember = document.createElement("span");
+                        newMember.className = "game-member";
+                        newMember.innerHTML = players[res.lobby[game].players[player].player_id].name;
+                        newMember.style.color=colors[child];
+                        players[res.lobby[game].players[player].player_id].setColor(child);
+                        players[res.lobby[game].players[player].player_id].setGame(gameCount);
+                        newGame.appendChild(newMember);
+                        var progressbar = document.createElement("div");
+                        progressbar.className="progress-bar";
+                        var progress = document.createElement("div");
+                        progress.className="progress";
+                        progress.style.background=colors[child];
+                        progressbar.appendChild(progress);
+                        newGame.appendChild(progressbar);
+                        child++;
+                    }
+                }
+                gameCount ++;
 
                 document.getElementById("left-view").appendChild(newGame);
             }
         }
+        console.log(players);
         for(var room in res.games) {
             if(res.games.hasOwnProperty(room)) {
                 for(var pos in res.games[room].positions) {
@@ -370,17 +564,56 @@ function fill_games() {
                                 path.push({lat: ent.latitude, lng: ent.longitude});
                             }
                         }
-                        mapPaths.push(new google.maps.Polyline({
+                        console.log(players[res.games[room].positions[pos].player_id].name);
+                        players[res.games[room].positions[pos].player_id].setMapPath(new google.maps.Polyline({
                             path: path,
                             geodesic: true,
-                            strokeColor: '#2196F3',
+                            strokeColor: colors[players[res.games[room].positions[pos].player_id].color],
                             strokeOpacity: 1.0,
                             strokeWeight: 5
-                        }).setMap(map));
-                        players[res.games[room].positions[pos].player_id]=new google.maps.Marker({
+                        }).setMap(globalMap));
+                        var mark = new google.maps.Marker({
                             position: new google.maps.LatLng(path[path.length-1].lat, path[path.length-1].lng),
-                            map: map
+                            draggable: false,
+                            map: globalMap,
+                            icon: images[players[res.games[room].positions[pos].player_id].color]
                         });
+                        players[res.games[room].positions[pos].player_id].setMarker(mark);
+                        google.maps.event.addListener(players[res.games[room].positions[pos].player_id].marker, 'click', function(e) {
+                            for(var pl in players) {
+                                if(players.hasOwnProperty(pl)) {
+                                    if(players[pl].marker === this) {
+                                        expand_games_by_index(players[pl].game);
+                                    }
+                                }
+                            }
+                        });
+                        google.maps.event.addListener(players[res.games[room].positions[pos].player_id].marker, 'mouseover', function(e) {
+                            for(var pl in players) {
+                                if(players.hasOwnProperty(pl)) {
+                                    if(players[pl].marker === this) {
+                                        for(var p in players) {
+                                            if(players.hasOwnProperty(p)) {
+                                                if(players[pl].game == players[p].game) {
+                                                    var newInfo = new google.maps.InfoWindow({
+                                                      content: players[p].name
+                                                    });
+                                                    newInfo.open(globalMap, players[p].marker);
+                                                    temp_info.push(newInfo);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }); google.maps.event.addListener(players[res.games[room].positions[pos].player_id].marker, 'mouseout', function(e) {
+                            console.log(temp_info);
+                            temp_info.forEach(function (inf) {
+                                inf.close();
+                            });
+                            temp_info = [];
+                        });
+                       
                     }
                 }
             }
@@ -388,7 +621,7 @@ function fill_games() {
         var bounds = new google.maps.LatLngBounds();
         bounds.extend(new google.maps.LatLng(minLat, minLong));
         bounds.extend(new google.maps.LatLng(maxLat, maxLong));
-        map.fitBounds(bounds);
+        globalMap.fitBounds(bounds);
     });
 }
 

@@ -26,6 +26,7 @@ body
 {
     flex-grow:3;
     width:66.67vw;
+    overflow:hidden;
 }
 h1
 {
@@ -88,8 +89,15 @@ h1
 }
 #map
 {
+    display:block;
     height:100%;
     width:100%;
+}
+#localMap0, #localMap1, #localMap2, #localMap3
+{
+    position: absolute;
+    display:none;
+    height:50%;
 }
 
 @media only screen and (max-width: 700px)
