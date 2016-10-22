@@ -1,0 +1,78 @@
+body
+{
+    font-family: "Trebuchet MS", sans-serif;
+}
+#views-container
+{
+    position:absolute;
+    top:0;
+    left:0;
+    width:100vw;
+    height:100vh;
+    display:flex;
+    flex-flow: row nowrap;
+}
+#left-view
+{
+    flex-grow:1;
+    width:33.33vw;
+    /*padding:30px;*/
+    box-sizing:content-box;
+    border-right:1px solid rgba(170,170,170,1);
+    background:rgb(230,230,220);
+}
+#right-view
+{
+    margin:-9px 0 0 -8px;
+    flex-grow:3;
+    width:66.67vw;
+}
+h1
+{
+    margin:30px 0 0 30px;
+}
+.game-button
+{
+    display:inline-block;
+    color:rgb(65,64,66);
+    cursor:pointer;
+    padding:0px 5px;
+    margin:5px 3px 5px 0;
+    border-radius:2px;
+    border:1px solid rgb(90,110,245);
+    background:rgb(130,150,255);
+}
+.game-member
+{
+    display:none;
+    margin-left:50px;
+    padding:5px 0;
+}
+.game
+{
+    display:block;
+    padding:5px 30px;
+    cursor:default;
+}
+.game:hover
+{
+    background:rgb(210,210,210);
+}
+#map
+{
+    height:100%;
+    width:100%;
+}
+
+@media only screen and (max-width: 700px)
+{
+    #views-container
+    {
+        flex-direction: column;
+    }
+    #left-view
+    {
+        border-right:none;
+        border-bottom:1px solid rgba(170,170,170,1);
+    }
+}
