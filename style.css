@@ -20,10 +20,10 @@ body
     box-sizing:content-box;
     border-right:1px solid rgba(170,170,170,1);
     background:rgb(230,230,220);
+    color:rgb(65,64,66);
 }
 #right-view
 {
-    margin:-9px 0 0 -8px;
     flex-grow:3;
     width:66.67vw;
 }
@@ -31,10 +31,26 @@ h1
 {
     margin:30px 0 0 30px;
 }
+.game
+{
+    display:block;
+    cursor:default;
+    padding:10px 0;
+    max-height:30px;
+    overflow:hidden;
+    transition:max-height 0.2s ease-out;
+}
+.game-expander
+{
+    display:block;
+    margin:0;
+    padding:0 30px;
+}
 .game-button
 {
     display:inline-block;
     color:rgb(65,64,66);
+    pointer-events: none;
     cursor:pointer;
     padding:0px 5px;
     margin:5px 3px 5px 0;
@@ -42,21 +58,33 @@ h1
     border:1px solid rgb(90,110,245);
     background:rgb(130,150,255);
 }
+.game-host
+{
+    pointer-events: none;
+}
 .game-member
 {
     display:none;
     margin-left:50px;
     padding:5px 0;
 }
-.game
+.progress-bar
+{
+    display:none;
+    height:5px;
+    margin:10px 60px;
+    border-radius:5px;
+    background:rgb(85,84,86);
+    overflow:hidden;
+    pointer-events: none;
+}
+.progress
 {
     display:block;
-    padding:5px 30px;
-    cursor:default;
-}
-.game:hover
-{
-    background:rgb(210,210,210);
+    height:100%;
+    width:40%;
+    border-radius:5px;
+    background:rgb(33,150,243);
 }
 #map
 {
