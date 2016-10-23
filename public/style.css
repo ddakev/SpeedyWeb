@@ -83,9 +83,10 @@ h1
 {
     display:block;
     height:100%;
-    width:40%;
+    width:0%;
     border-radius:5px;
     background:rgb(33,150,243);
+    transition:width 0.5s;
 }
 #map
 {

@@ -22,6 +22,7 @@ var selectedGame;
 var lastLat = [];
 var lastLong = [];
 var speed;
+var sim;
 
 function Player(name) {
     this.name = name;
@@ -48,6 +49,18 @@ Player.prototype.setGoal = function(goal) {
 (function() {
     window.addEventListener("load", function(e) {
         init_firebase();
+    });
+    window.addEventListener("keyup", function(e) {
+        if(e.keyCode == 32) {
+            if(sim == undefined || sim == null) {
+                sim = setInterval(simulate, 2000);
+            }
+            else {
+                clearInterval(sim);
+                sim = null;
+            }
+        }
+            
     });
 })();
 
@@ -76,7 +89,7 @@ function init_firebase() {
         }
         
         //comment this line to stop spoofing locations
-        setInterval(simulate, 2000);
+        //setInterval(simulate, 2000);
     });
 }
     
