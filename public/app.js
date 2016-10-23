@@ -19,9 +19,6 @@ var globalMap;
 var localMaps = [];
 var temp_info = [];
 var selectedGame;
-var lastLat = [];
-var lastLong = [];
-var speed;
 
 function Player(name) {
     this.name = name;
@@ -57,27 +54,6 @@ function init_firebase() {
     
     fill_games();
     init_events();
-    
-    speed = 0.3;
-    
-    firebase.database().ref('/games/-KUiOLBGV53ABRAt2PlY/positions/').once('value', function(snapshot)
-    {
-        var res = snapshot.val();
-        for(var t in res) {
-            if(res.hasOwnProperty(t)) {
-                var h = res[t].position_history;
-                for(var c in res[t].position_history) {
-                    if(res[t].position_history.hasOwnProperty(c)) {
-                        lastLat[t.substr(1)]=res[t].position_history[c].latitude;
-                        lastLong[t.substr(1)]=res[t].position_history[c].longitude;
-                    }
-                }
-            }
-        }
-        
-        //comment this line to stop spoofing locations
-        setInterval(simulate, 2000);
-    });
 }
     
 function init_events() {
@@ -435,98 +411,133 @@ function load_game(index) {
         google.maps.event.trigger(globalMap, 'resize');
     }
     else {
-        gm.style.display="none";
-        var mapPlayers = [];
-        var numPlayers = 0;
-        for(var pl in players) {
-            if(players.hasOwnProperty(pl)) {
-                if(players[pl].game == index) {
-                    lm[numPlayers].style.display = "inline-block";
-                    numPlayers ++;
+        /*firebase.database().ref('/').once('value').then(function(snapshot)
+        {
+            var res = snapshot.val();*/
+            gm.style.display="none";
+            var mapPlayers = [];
+            var numPlayers = 0;
+            for(var pl in players) {
+                if(players.hasOwnProperty(pl)) {
+                    if(players[pl].game == index) {
+                        lm[numPlayers].style.display = "inline-block";
+                        numPlayers ++;
+                    }
                 }
             }
-        }
-        if(numPlayers == 2) {
-            lm[0].style.width = "66.67vw";
-            lm[1].style.top="50%";
-            lm[1].style.left = "33.33vw";
-            lm[1].style.width = "66.67vw";
-        } else if(numPlayers == 3) {
-            lm[0].style.width = "33.33vw";
-            lm[1].style.left = "66.67vw";
-            lm[1].style.top = "0";
-            lm[1].style.width = "33.33vw";
-            lm[2].style.top = "50%";
-            lm[2].style.width = "66.67vw";
-        } else {
-            lm[0].style.width = "33.33vw";
-            lm[1].style.top = "0";
-            lm[1].style.left = "66.67vw";
-            lm[1].style.width = "33.33vw";
-            lm[2].style.top = "50%";
-            lm[2].style.width = "33.33vw";
-            lm[3].style.top = "50%";
-            lm[3].style.left = "66.67vw";
-            lm[3].style.width = "33.33vw";
-        }
-        numPlayers = 0;
-        for(var pl in players) {
-            if(players.hasOwnProperty(pl)) {
-                if(players[pl].game == index) {
-                    mapPlayers.push({pl: players[pl]});
-                    var path = [];
-                    var minLat = undefined,
-                        minLong = undefined,
-                        maxLat = undefined,
-                        maxLong = undefined;
-                    console.log(players[pl].path);
-                    players[pl].path.forEach(function (p) {
-                        if(minLat == undefined) {
-                            minLat = p.lat;
-                            minLong = p.lng;
-                            maxLat = p.lat;
-                            maxLong = p.lng;
-                        }
-                        else {
-                            if(minLat > p.lat)
+            if(numPlayers == 2) {
+                lm[0].style.width = "66.67vw";
+                lm[1].style.top="50%";
+                lm[1].style.left = "33.33vw";
+                lm[1].style.width = "66.67vw";
+            } else if(numPlayers == 3) {
+                lm[0].style.width = "33.33vw";
+                lm[1].style.left = "66.67vw";
+                lm[1].style.top = "0";
+                lm[1].style.width = "33.33vw";
+                lm[2].style.top = "50%";
+                lm[2].style.width = "66.67vw";
+            } else {
+                lm[0].style.width = "33.33vw";
+                lm[1].style.top = "0";
+                lm[1].style.left = "66.67vw";
+                lm[1].style.width = "33.33vw";
+                lm[2].style.top = "50%";
+                lm[2].style.width = "33.33vw";
+                lm[3].style.top = "50%";
+                lm[3].style.left = "66.67vw";
+                lm[3].style.width = "33.33vw";
+            }
+            numPlayers = 0;
+            for(var pl in players) {
+                if(players.hasOwnProperty(pl)) {
+                    if(players[pl].game == index) {
+                        mapPlayers.push({pl: players[pl]});
+                        var path = [];
+                        var minLat = undefined,
+                            minLong = undefined,
+                            maxLat = undefined,
+                            maxLong = undefined;
+                        console.log(players[pl].path);
+                        players[pl].path.forEach(function (p) {
+                            if(minLat == undefined) {
                                 minLat = p.lat;
-                            if(maxLat < p.lat)
-                                maxLat = p.lat;
-                            if(minLong > p.lng)
                                 minLong = p.lng;
-                            if(maxLong < p.lng)
+                                maxLat = p.lat;
                                 maxLong = p.lng;
-                        }
-
-                    });
-                    var bounds = new google.maps.LatLngBounds();
-                    bounds.extend(new google.maps.LatLng(minLat, minLong));
-                    bounds.extend(new google.maps.LatLng(maxLat, maxLong));
-                    localMaps[numPlayers].fitBounds(bounds);
-                    google.maps.event.trigger(localMaps[numPlayers], 'resize');
-                    localMaps[numPlayers].setCenter(new google.maps.LatLng((minLat+maxLat)/2, (minLong+maxLong)/2));
-                    new google.maps.Polyline({
-                        path: players[pl].path,
-                        geodesic: true,
-                        strokeColor: colors[players[pl].color],
-                        strokeOpacity: 1.0,
-                        strokeWeight: 5
-                    }).setMap(localMaps[numPlayers]);
-                    var mark = players[pl].marker;
-                    mark.setPosition(new google.maps.LatLng(players[pl].path[players[pl].path.length-1].lat, players[pl].path[players[pl].path.length-1].lng));
-                    mark.setMap(localMaps[numPlayers]);
-                    players[pl].setProgress(calculate_distance(players[pl].path)/players[pl].goal);
-                    var prgs = document.getElementsByClassName("game")[selectedGame].getElementsByClassName("progress-bar");
-                    Array.prototype.forEach.call(prgs, function(prg) {
-                        if(prg.getElementsByClassName("progress")[0].style.background == colors[players[pl].color]) {
-                            prg.getElementsByClassName("progress")[0].style.width=players[pl].progress*100+"%";
-                        }
-                    });
-
-                    numPlayers ++;
+                            }
+                            else {
+                                if(minLat > p.lat)
+                                    minLat = p.lat;
+                                if(maxLat < p.lat)
+                                    maxLat = p.lat;
+                                if(minLong > p.lng)
+                                    minLong = p.lng;
+                                if(maxLong < p.lng)
+                                    maxLong = p.lng;
+                            }
+                            
+                        });
+                        /*for(var game in res.games) {
+                            if(res.games.hasOwnProperty(game)) {
+                                for(var pos in res.games[game].positions) {
+                                    if(res.games[game].positions.hasOwnProperty(pos)) {
+                                        var p = res.games[game].positions[pos];
+                                        if(p.player_id == pl) {
+                                            for(var coords in p.position_history) {
+                                                if(p.position_history.hasOwnProperty(coords)) {
+                                                    path.push({lat: p.position_history[coords].latitude, lng: p.position_history[coords].longitude});
+                                                    if(minLat == undefined) {
+                                                        minLat = p.position_history[coords].latitude;
+                                                        maxLat = p.position_history[coords].latitude;
+                                                        minLong = p.position_history[coords].longitude;
+                                                        maxLong = p.position_history[coords].longitude;
+                                                        continue;
+                                                    }
+                                                    if(minLat > p.position_history[coords].latitude)
+                                                        minLat = p.position_history[coords].latitude;
+                                                    if(maxLat < p.position_history[coords].latitude)
+                                                        maxLat = p.position_history[coords].latitude;
+                                                    if(minLong > p.position_history[coords].longitude)
+                                                        minLong = p.position_history[coords].longitude;
+                                                    if(maxLong < p.position_history[coords].longitude)
+                                                        maxLong = p.position_history[coords].longitude;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }*/
+                        var bounds = new google.maps.LatLngBounds();
+                        bounds.extend(new google.maps.LatLng(minLat, minLong));
+                        bounds.extend(new google.maps.LatLng(maxLat, maxLong));
+                        localMaps[numPlayers].fitBounds(bounds);
+                        google.maps.event.trigger(localMaps[numPlayers], 'resize');
+                        localMaps[numPlayers].setCenter(new google.maps.LatLng((minLat+maxLat)/2, (minLong+maxLong)/2));
+                        new google.maps.Polyline({
+                            path: players[pl].path,
+                            geodesic: true,
+                            strokeColor: colors[players[pl].color],
+                            strokeOpacity: 1.0,
+                            strokeWeight: 5
+                        }).setMap(localMaps[numPlayers]);
+                        var mark = players[pl].marker;
+                        mark.setPosition(new google.maps.LatLng(players[pl].path[players[pl].path.length-1].lat, players[pl].path[players[pl].path.length-1].lng));
+                        mark.setMap(localMaps[numPlayers]);
+                        players[pl].setProgress(calculate_distance(players[pl].path)/players[pl].goal);
+                        var prgs = document.getElementsByClassName("game")[selectedGame].getElementsByClassName("progress-bar");
+                        Array.prototype.forEach.call(prgs, function(prg) {
+                            if(prg.getElementsByClassName("progress")[0].style.background == colors[players[pl].color]) {
+                                prg.getElementsByClassName("progress")[0].style.width=players[pl].progress*100+"%";
+                            }
+                        });
+                        
+                        numPlayers ++;
+                    }
                 }
             }
-        }
+        //});
         google.maps.event.trigger(globalMap,'resize');
         google.maps.event.trigger(localMaps[0],'resize');
         google.maps.event.trigger(localMaps[1],'resize');
@@ -672,8 +683,6 @@ function fill_games() {
                             map: globalMap,
                             icon: images[players[pos].color]
                         });
-                        if(players[pos].marker != undefined)
-                            players[pos].marker.setMap(null);
                         players[pos].setMarker(mark);
                         google.maps.event.addListener(players[pos].marker, 'click', function(e) {
                             for(var pl in players) {
@@ -740,40 +749,4 @@ function randomCoords(n) {
     }
     coords += "]";
     console.log(coords);
-}
-
-/* Spoofing function - enters coordinates into the database every 2 seconds. Moving in a random direction and a random distance between 0 and speed kilometers */
-function simulate() {
-    var dist = Math.random()*speed*360/(2*Math.PI*6378);
-    var dir = Math.random()*360;
-    database.ref('/games/-KUiOLBGV53ABRAt2PlY/positions/-KUhOs2OYEWhkeJVJxmB/position_history/').push({
-        latitude: lastLat["KUhOs2OYEWhkeJVJxmB"]+dist*Math.sin(dir),
-        longitude: lastLong["KUhOs2OYEWhkeJVJxmB"]+dist*Math.cos(dir)
-    });
-    lastLat["KUhOs2OYEWhkeJVJxmB"] +=dist*Math.sin(dir);
-    lastLong["KUhOs2OYEWhkeJVJxmB"]+=dist*Math.cos(dir);
-    dist = Math.random()*speed*360/(2*Math.PI*6378);
-    dir = Math.random()*360;
-    database.ref('/games/-KUiOLBGV53ABRAt2PlY/positions/-KUiZhR2_umqLt3x2G5z/position_history/').push({
-        latitude: lastLat["KUiZhR2_umqLt3x2G5z"]+dist*Math.sin(dir),
-        longitude: lastLong["KUiZhR2_umqLt3x2G5z"]+dist*Math.cos(dir)
-    });
-    lastLat["KUiZhR2_umqLt3x2G5z"] +=dist*Math.sin(dir);
-    lastLong["KUiZhR2_umqLt3x2G5z"]+=dist*Math.cos(dir);
-    dist = Math.random()*speed*360/(2*Math.PI*6378);
-    dir = Math.random()*360;
-    database.ref('/games/-KUiOLBGV53ABRAt2PlY/positions/-KUiZhyn8SoDUkfEdJam/position_history/').push({
-        latitude: lastLat["KUiZhyn8SoDUkfEdJam"]+dist*Math.sin(dir),
-        longitude: lastLong["KUiZhyn8SoDUkfEdJam"]+dist*Math.cos(dir)
-    });
-    lastLat["KUiZhyn8SoDUkfEdJam"] +=dist*Math.sin(dir);
-    lastLong["KUiZhyn8SoDUkfEdJam"]+=dist*Math.cos(dir);
-    dist = Math.random()*speed*360/(2*Math.PI*6378);
-    dir = Math.random()*360;
-    database.ref('/games/-KUiOLBGV53ABRAt2PlY/positions/-KUid7MHTlIuox2uzQUN/position_history/').push({
-        latitude: lastLat["KUid7MHTlIuox2uzQUN"]+dist*Math.sin(dir),
-        longitude: lastLong["KUid7MHTlIuox2uzQUN"]+dist*Math.cos(dir)
-    });
-    lastLat["KUid7MHTlIuox2uzQUN"] +=dist*Math.sin(dir);
-    lastLong["KUid7MHTlIuox2uzQUN"]+=dist*Math.cos(dir);
 }
