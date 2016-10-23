@@ -348,7 +348,6 @@ function calculate_distance(path) {
 function load_game(index) {
     var gm = document.getElementById("map");
     var lm = new Array(4);
-    var bounds = new google.maps.LatLngBounds();
     lm[0] = document.getElementById("localMap0");
     lm[1] = document.getElementById("localMap1");
     lm[2] = document.getElementById("localMap2");
@@ -400,20 +399,11 @@ function load_game(index) {
                 });
             }
         }
-        for(var pl in players) {
-            if(players.hasOwnProperty(pl)) {
-                players[pl].path.forEach(function(p) {
-                    bounds.extend(p.lat, p.lng);
-                });
-            }
-        }
-        globalMap.fitBounds(bounds);
-        google.maps.event.trigger(globalMap, 'resize');
     }
     else {
-        /*firebase.database().ref('/').once('value').then(function(snapshot)
+        firebase.database().ref('/').once('value').then(function(snapshot)
         {
-            var res = snapshot.val();*/
+            var res = snapshot.val();
             gm.style.display="none";
             var mapPlayers = [];
             var numPlayers = 0;
@@ -452,33 +442,14 @@ function load_game(index) {
             for(var pl in players) {
                 if(players.hasOwnProperty(pl)) {
                     if(players[pl].game == index) {
+                        console.log(index + " " + players[pl].name);
                         mapPlayers.push({pl: players[pl]});
                         var path = [];
                         var minLat = undefined,
                             minLong = undefined,
                             maxLat = undefined,
                             maxLong = undefined;
-                        console.log(players[pl].path);
-                        players[pl].path.forEach(function (p) {
-                            if(minLat == undefined) {
-                                minLat = p.lat;
-                                minLong = p.lng;
-                                maxLat = p.lat;
-                                maxLong = p.lng;
-                            }
-                            else {
-                                if(minLat > p.lat)
-                                    minLat = p.lat;
-                                if(maxLat < p.lat)
-                                    maxLat = p.lat;
-                                if(minLong > p.lng)
-                                    minLong = p.lng;
-                                if(maxLong < p.lng)
-                                    maxLong = p.lng;
-                            }
-                            
-                        });
-                        /*for(var game in res.games) {
+                        for(var game in res.games) {
                             if(res.games.hasOwnProperty(game)) {
                                 for(var pos in res.games[game].positions) {
                                     if(res.games[game].positions.hasOwnProperty(pos)) {
@@ -508,24 +479,25 @@ function load_game(index) {
                                     }
                                 }
                             }
-                        }*/
+                        }
                         var bounds = new google.maps.LatLngBounds();
                         bounds.extend(new google.maps.LatLng(minLat, minLong));
                         bounds.extend(new google.maps.LatLng(maxLat, maxLong));
                         localMaps[numPlayers].fitBounds(bounds);
                         google.maps.event.trigger(localMaps[numPlayers], 'resize');
                         localMaps[numPlayers].setCenter(new google.maps.LatLng((minLat+maxLat)/2, (minLong+maxLong)/2));
+                        players[pl].setPath(path);
                         new google.maps.Polyline({
-                            path: players[pl].path,
+                            path: path,
                             geodesic: true,
                             strokeColor: colors[players[pl].color],
                             strokeOpacity: 1.0,
                             strokeWeight: 5
                         }).setMap(localMaps[numPlayers]);
                         var mark = players[pl].marker;
-                        mark.setPosition(new google.maps.LatLng(players[pl].path[players[pl].path.length-1].lat, players[pl].path[players[pl].path.length-1].lng));
+                        mark.setPosition(new google.maps.LatLng(path[path.length-1].lat, path[path.length-1].lng));
                         mark.setMap(localMaps[numPlayers]);
-                        players[pl].setProgress(calculate_distance(players[pl].path)/players[pl].goal);
+                        players[pl].setProgress(calculate_distance(path)/players[pl].goal);
                         var prgs = document.getElementsByClassName("game")[selectedGame].getElementsByClassName("progress-bar");
                         Array.prototype.forEach.call(prgs, function(prg) {
                             if(prg.getElementsByClassName("progress")[0].style.background == colors[players[pl].color]) {
@@ -537,7 +509,7 @@ function load_game(index) {
                     }
                 }
             }
-        //});
+        });
         google.maps.event.trigger(globalMap,'resize');
         google.maps.event.trigger(localMaps[0],'resize');
         google.maps.event.trigger(localMaps[1],'resize');
@@ -547,93 +519,81 @@ function load_game(index) {
 }
 
 function fill_games() {
-    firebase.database().ref('/').on('value', function(snapshot)
+    firebase.database().ref('/').once('value').then(function(snapshot)
     {
         var res = snapshot.val();
         for (var key in res.players) {
             if (res.players.hasOwnProperty(key)) {
-                if(players[key]==undefined) {
-                    players[key]=new Player(res.players[key].name);
-                }
+                //REMOVE THIS
+                if(res.players[key].id == undefined) continue;
+                players[res.players[key].id]=new Player(res.players[key].name);
             }
         }
         console.log(players);
         var gameCount = 0;
         for(var game in res.lobby) {
             if(res.lobby.hasOwnProperty(game)) {
-                if(document.getElementById(game) == undefined) {
-                    var newGame = document.createElement("div");
-                    newGame.className = "game";
-                    newGame.id = game;
-                    
-                    var expander = document.createElement("div");
-                    expander.className = "game-expander";
-                    expander.innerHTML += "<span class=\"game-button\">+</span>\n";
-                    expander.innerHTML += "<span class=\"game-host\">" + players[res.lobby[game].host_id].name + "'s race</span>\n";
-                    expander.addEventListener("click", function(e) {
-                        expand_games(e);
-                    });
-                    expander.addEventListener("mouseover", function(e) {
-                        if(selectedGame == -1 || document.getElementsByClassName("game")[selectedGame] != e.target.parentElement) {
-                            e.target.parentElement.style.backgroundColor="rgb(210,210,210)";
-                        }
-                    });
-                    expander.addEventListener("mouseout", function(e) {
-                        if(selectedGame == -1 || document.getElementsByClassName("game")[selectedGame] != e.target.parentElement) {
-                            e.target.parentElement.style.backgroundColor="transparent";
-                        }
-                    });
-                    newGame.appendChild(expander);
+                var newGame = document.createElement("div");
+                newGame.className = "game";
 
-                    var newMember = document.createElement("span");
-                    newMember.className = "game-member";
-                    newMember.innerHTML = players[res.lobby[game].host_id].name;
-                    newMember.style.color=colors[0];
-                    players[res.lobby[game].host_id].setColor(0);
-                    players[res.lobby[game].host_id].setGame(gameCount);
-                    players[res.lobby[game].host_id].setGoal(res.lobby[game].room_distance);
-                    newGame.appendChild(newMember);
-                    var progressbar = document.createElement("div");
-                    progressbar.className="progress-bar";
-                    var progress = document.createElement("div");
-                    progress.className="progress";
-                    progress.style.background=colors[0];
-                    progressbar.appendChild(progress);
-                    newGame.appendChild(progressbar);
-                }
-                else {
-                    var newGame = document.getElementById(game);
-                }
+                var expander = document.createElement("div");
+                expander.className = "game-expander";
+                expander.innerHTML += "<span class=\"game-button\">+</span>\n";
+                expander.innerHTML += "<span class=\"game-host\">" + players[res.lobby[game].host_id].name + "'s race</span>\n";
+                expander.addEventListener("click", function(e) {
+                    expand_games(e);
+                });
+                expander.addEventListener("mouseover", function(e) {
+                    if(selectedGame == -1 || document.getElementsByClassName("game")[selectedGame] != e.target.parentElement) {
+                        e.target.parentElement.style.backgroundColor="rgb(210,210,210)";
+                    }
+                });
+                expander.addEventListener("mouseout", function(e) {
+                    if(selectedGame == -1 || document.getElementsByClassName("game")[selectedGame] != e.target.parentElement) {
+                        e.target.parentElement.style.backgroundColor="transparent";
+                    }
+                });
+                newGame.appendChild(expander);
 
+                var newMember = document.createElement("span");
+                newMember.className = "game-member";
+                newMember.innerHTML = players[res.lobby[game].host_id].name;
+                newMember.style.color=colors[0];
+                players[res.lobby[game].host_id].setColor(0);
+                players[res.lobby[game].host_id].setGame(gameCount);
+                players[res.lobby[game].host_id].setGoal(res.lobby[game].room_distance);
+                newGame.appendChild(newMember);
+                var progressbar = document.createElement("div");
+                progressbar.className="progress-bar";
+                var progress = document.createElement("div");
+                progress.className="progress";
+                progress.style.background=colors[0];
+                progressbar.appendChild(progress);
+                newGame.appendChild(progressbar);
                 var child = 1;
                 for(var player in res.lobby[game].players) {
                     if(res.lobby[game].players.hasOwnProperty(player)) {
-                        if(document.getElementById(player) == undefined) {
-                            var newMember = document.createElement("span");
-                            newMember.className = "game-member";
-                            newMember.id = player;
-                            newMember.innerHTML = players[player].name;
-                            newMember.style.color=colors[child];
-                            players[player].setColor(child);
-                            players[player].setGame(gameCount);
-                            players[player].setGoal(res.lobby[game].room_distance);
-                            newGame.appendChild(newMember);
-                            var progressbar = document.createElement("div");
-                            progressbar.className="progress-bar";
-                            var progress = document.createElement("div");
-                            progress.className="progress";
-                            progress.style.background=colors[child];
-                            progressbar.appendChild(progress);
-                            newGame.appendChild(progressbar);
-                        }
+                        var newMember = document.createElement("span");
+                        newMember.className = "game-member";
+                        newMember.innerHTML = players[res.lobby[game].players[player].player_id].name;
+                        newMember.style.color=colors[child];
+                        players[res.lobby[game].players[player].player_id].setColor(child);
+                        players[res.lobby[game].players[player].player_id].setGame(gameCount);
+                        players[res.lobby[game].players[player].player_id].setGoal(res.lobby[game].room_distance);
+                        newGame.appendChild(newMember);
+                        var progressbar = document.createElement("div");
+                        progressbar.className="progress-bar";
+                        var progress = document.createElement("div");
+                        progress.className="progress";
+                        progress.style.background=colors[child];
+                        progressbar.appendChild(progress);
+                        newGame.appendChild(progressbar);
                         child++;
                     }
                 }
                 gameCount ++;
-                
-                if(document.getElementById(game) == undefined) {
-                    document.getElementById("left-view").appendChild(newGame);
-                }
+
+                document.getElementById("left-view").appendChild(newGame);
             }
         }
         console.log(players);
@@ -667,13 +627,11 @@ function fill_games() {
                                 bounds.extend(new google.maps.LatLng(ent.latitude, ent.longitude));
                             }
                         }
-                        console.log(pos);
-                        console.log(players[pos]);
-                        players[pos].setPath(path);
+                        players[res.games[room].positions[pos].player_id].setPath(path);
                         new google.maps.Polyline({
                             path: path,
                             geodesic: true,
-                            strokeColor: colors[players[pos].color],
+                            strokeColor: colors[players[res.games[room].positions[pos].player_id].color],
                             strokeOpacity: 1.0,
                             strokeWeight: 5
                         }).setMap(globalMap);
@@ -681,10 +639,10 @@ function fill_games() {
                             position: new google.maps.LatLng(path[path.length-1].lat, path[path.length-1].lng),
                             draggable: false,
                             map: globalMap,
-                            icon: images[players[pos].color]
+                            icon: images[players[res.games[room].positions[pos].player_id].color]
                         });
-                        players[pos].setMarker(mark);
-                        google.maps.event.addListener(players[pos].marker, 'click', function(e) {
+                        players[res.games[room].positions[pos].player_id].setMarker(mark);
+                        google.maps.event.addListener(players[res.games[room].positions[pos].player_id].marker, 'click', function(e) {
                             for(var pl in players) {
                                 if(players.hasOwnProperty(pl)) {
                                     if(players[pl].marker === this) {
@@ -693,7 +651,7 @@ function fill_games() {
                                 }
                             }
                         });
-                        google.maps.event.addListener(players[pos].marker, 'mouseover', function(e) {
+                        google.maps.event.addListener(players[res.games[room].positions[pos].player_id].marker, 'mouseover', function(e) {
                             for(var pl in players) {
                                 if(players.hasOwnProperty(pl)) {
                                     if(players[pl].marker === this) {
@@ -711,7 +669,7 @@ function fill_games() {
                                     }
                                 }
                             }
-                        }); google.maps.event.addListener(players[pos].marker, 'mouseout', function(e) {
+                        }); google.maps.event.addListener(players[res.games[room].positions[pos].player_id].marker, 'mouseout', function(e) {
                             temp_info.forEach(function (inf) {
                                 inf.close();
                             });
@@ -724,13 +682,9 @@ function fill_games() {
         }
         console.log("bounds: "+minLat+","+minLong+" "+maxLat+","+maxLong);
         globalMap.fitBounds(bounds);
-        google.maps.event.trigger(globalMap, 'resize');
-        if(selectedGame != -1)
-            load_game(selectedGame);
     });
 }
 
-/* Testing function - returns 3 coordinates representing a path in the Atlanta Metro Area, with reasonable spacing between points */
 function randomCoords(n) {
     var lat = Math.random()*(33.920360-33.620509)+33.620509;
     var long = Math.random()*(-84.230986+84.504650)-84.504650;
